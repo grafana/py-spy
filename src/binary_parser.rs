@@ -28,6 +28,7 @@ impl BinaryInfo {
 }
 
 /// Uses goblin to parse a binary file, returns information on symbols/bss/adjusted offset etc
+#[allow(clippy::unnecessary_map_or)]
 pub fn parse_binary(filename: &Path, addr: u64, size: u64) -> Result<BinaryInfo, Error> {
     let offset = addr;
 

@@ -139,7 +139,6 @@ pub fn copy_int<P: ProcessMemory>(process: &P, addr: usize) -> Result<i64, Error
 }
 
 /// Allows iteration of a python dictionary. Only supports python 3.6+ right now
-
 pub struct DictIterator<'a, P: 'a> {
     process: &'a P,
     entries_addr: usize,
@@ -277,7 +276,7 @@ impl<'a, P: ProcessMemory> DictIterator<'a, P> {
     }
 }
 
-impl<'a, P: ProcessMemory> Iterator for DictIterator<'a, P> {
+impl<P: ProcessMemory> Iterator for DictIterator<'_, P> {
     type Item = Result<(usize, usize), Error>;
 
     fn next(&mut self) -> Option<Self::Item> {

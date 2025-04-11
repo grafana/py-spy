@@ -13,6 +13,7 @@ mod coredump;
 mod cython;
 mod dump;
 mod flamegraph;
+mod line_numbers;
 #[cfg(feature = "unwind")]
 mod native_stack_trace;
 mod python_bindings;

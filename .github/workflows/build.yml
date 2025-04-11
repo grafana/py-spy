@@ -77,7 +77,7 @@ jobs:
           python3 -c "import shutil; import glob; wheels = glob.glob('dist/*.whl'); [shutil.move(wheel, wheel.replace('py3', 'py2.py3')) for wheel in wheels if 'py2' not in wheel]"
         if: runner.os != 'Linux'
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -120,7 +120,7 @@ jobs:
         run: |
           python3 -c "import shutil; import glob; wheels = glob.glob('dist/*.whl'); [shutil.move(wheel, wheel.replace('py3', 'py2.py3')) for wheel in wheels if 'py2' not in wheel]"
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -136,14 +136,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Cache Vagrant box
-        uses: actions/cache@v3.0.4
+        uses: actions/cache@v4
         with:
           path: .vagrant.d
           key: ${{ matrix.box }}-vagrant-boxes-20231115-${{ hashFiles('ci/Vagrantfile') }}
           restore-keys: |
             ${{ matrix.box }}-vagrant-boxes-20231115-
       - name: Cache Cargo and build artifacts
-        uses: actions/cache@v3.0.4
+        uses: actions/cache@v4
         with:
           path: build-artifacts.tar
           key: ${{ matrix.box }}-cargo-20231115-${{ hashFiles('**/Cargo.lock') }}
@@ -177,7 +177,7 @@ jobs:
           tar xf build-artifacts.tar target/release/py-spy
           mv target/release/py-spy py-spy-x86_64-unknown-freebsd
       - name: Upload Binaries
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: py-spy-x86_64-unknown-freebsd
           path: py-spy-x86_64-unknown-freebsd
