@@ -6,6 +6,7 @@ use remoteprocess::{Pid, ProcessMemory};
 use serde_derive::Serialize;
 
 use crate::config::{Config, LineNo};
+use crate::line_numbers::LineTableBuf;
 use crate::python_data_access::{copy_bytes, copy_string};
 use crate::python_interpreters::{
     CodeObject, FrameObject, InterpreterState, ThreadState, TupleObject,
@@ -246,7 +247,9 @@ fn get_line_number<C: CodeObject, P: ProcessMemory>(
 ) -> Result<i32, Error> {
     let table =
         copy_bytes(code.line_table(), process).context("Failed to copy line number table")?;
-    Ok(code.get_line_number(lasti, &table))
+    let mut ct = LineTableBuf::new(&table);
+    code.get_line_number(lasti, &mut ct)
+        .or_else(|err| bail!("Failed to get line number {err:?}"))
 }
 
 fn get_locals<C: CodeObject, F: FrameObject, P: ProcessMemory>(

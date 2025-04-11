@@ -36,11 +36,12 @@ pub mod coredump;
 #[cfg(feature = "unwind")]
 mod cython;
 pub mod dump;
+pub mod line_numbers;
 #[cfg(feature = "unwind")]
 mod native_stack_trace;
-mod python_bindings;
+pub mod python_bindings;
 mod python_data_access;
-mod python_interpreters;
+pub mod python_interpreters;
 pub mod python_process_info;
 pub mod python_spy;
 mod python_threading;
