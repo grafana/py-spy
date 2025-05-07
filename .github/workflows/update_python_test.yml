@@ -5,6 +5,7 @@ on:
     - cron: "0 1 * * *"
 permissions:
   contents: read
+  id-token: write
 jobs:
   update-dep:
     runs-on: ubuntu-latest
