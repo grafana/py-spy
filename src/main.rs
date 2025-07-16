@@ -278,7 +278,7 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
             }
         }
 
-        for trace in sample.traces {
+        for trace in sample.traces.iter_mut() {
             if !(config.include_idle || trace.active) {
                 continue;
             }
