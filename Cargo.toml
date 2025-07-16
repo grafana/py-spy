@@ -1,5 +1,6 @@
 [features]
 unwind = ["remoteprocess/unwind"]
+otlp = ["opentelemetry-proto"]
 
 [package]
 name = "py-spy"
@@ -41,6 +42,7 @@ rand = "0.8"
 rand_distr = "0.4"
 remoteprocess = "0.5.0"
 chrono = "0.4.26"
+opentelemetry-proto = { optional = true, rev = "7b3db0b6a692574ff4d504ad2b6cd5634316e3a0", git = "https://github.com/open-telemetry/opentelemetry-rust.git", features = ["tonic"] }
 
 [dev-dependencies]
 py-spy-testdata = "0.1.0"
