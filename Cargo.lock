@@ -1409,6 +1409,7 @@ dependencies = [
  "num-traits",
  "opentelemetry-proto",
  "proc-maps",
+ "prost",
  "py-spy-testdata",
  "rand",
  "rand_distr",

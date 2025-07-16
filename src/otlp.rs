@@ -3,6 +3,7 @@ use anyhow::Error;
 use opentelemetry_proto::tonic::profiles::v1::{Function, Line, Location, Mapping};
 use opentelemetry_proto::tonic::profiles::v1::ProfilesDictionary;
 use std::collections::HashMap;
+use std::hash::{Hash};
 
 pub struct OTLP {
     pd: ProfilesDictionary,
@@ -51,39 +52,40 @@ impl OTLP {
     }
 
     fn str(&mut self, s: String) -> i32 {
-        match self.strings.get(&s) {
+        // match self.strings.get(&s) {
+        //     None => {
+        //         let idx = self.pd.string_table.len() as i32;
+        //         self.pd.string_table.push(s.clone());//todo avoid clone here
+        //         self.strings.insert(s, idx);
+        //         idx
+        //     }
+        //     Some(idx) => *idx,
+        // }
+        Self::insert(&mut self.strings, &mut self.pd.string_table, s)
+    }
+    
+    fn fun(&mut self, fm: FunctionMirror) -> i32 {
+        Self::insert(&mut self.functions, &mut self.pd.function_table, fm)
+    }
+    fn loc(&mut self, lm: LocationMirror) -> i32 {
+        Self::insert(&mut self.locations, &mut self.pd.location_table, lm)
+    }
+    fn insert<M, V>(hm: &mut HashMap<M, i32>, table: & mut Vec<V>, m: M) ->i32
+    where
+        M: PartialEq + Eq + Hash + Clone,
+        V: From<M>,
+    {
+        match hm.get(&m) {
             None => {
-                let idx = self.pd.string_table.len() as i32;
-                self.pd.string_table.push(s.clone());//todo avoid clone here
-                self.strings.insert(s, idx);
+                let idx = table.len() as i32;
+                table.push(m.clone().into());//todo think how this clone can be avoided for strign table
+                hm.insert(m, idx);
                 idx
             }
             Some(idx) => *idx,
         }
     }
 
-    fn fun(&mut self, fm: FunctionMirror) -> i32 {
-        match self.functions.get(&fm) {
-            None => {
-                let idx = self.pd.function_table.len() as i32;
-                self.pd.function_table.push(fm.clone().into());
-                self.functions.insert(fm, idx);
-                idx
-            }
-            Some(idx) => *idx,
-        }
-    }
-    fn loc(&mut self, lm: LocationMirror) -> i32 {
-        match self.locations.get(&lm) {
-            None => {
-                let idx = self.pd.location_table.len() as i32;
-                self.pd.location_table.push(lm.clone().into());
-                self.locations.insert(lm, idx);
-                idx
-            }
-            Some(idx) => *idx,
-        }
-    }
 }
 
 #[derive(PartialEq, Clone, Eq, Hash)]
