@@ -209,7 +209,7 @@ impl Stats {
         }
     }
 
-    pub fn record(&mut self, stack: &stack_trace::StackTrace) -> Result<(), io::Error> {
+    pub fn record(&mut self, stack: stack_trace::StackTrace) -> Result<(), io::Error> {
         let show_line_numbers = self.config.show_line_numbers;
         let mut frame_indices: Vec<usize> = stack
             .frames
@@ -303,7 +303,7 @@ mod tests {
             process_info: None,
         };
 
-        stats.record(&trace).unwrap();
+        stats.record(trace).unwrap();
         stats.write(&mut cursor).unwrap();
 
         cursor.seek(SeekFrom::Start(0)).unwrap();

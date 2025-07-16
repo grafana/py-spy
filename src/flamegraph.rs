@@ -47,7 +47,7 @@ impl Flamegraph {
         }
     }
 
-    pub fn increment(&mut self, trace: &StackTrace) -> std::io::Result<()> {
+    pub fn increment(&mut self, trace: StackTrace) -> std::io::Result<()> {
         // convert the frame into a single ';' delimited String
         let frame = trace
             .frames

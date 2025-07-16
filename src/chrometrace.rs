@@ -68,7 +68,7 @@ impl Chrometrace {
         }
     }
 
-    pub fn increment(&mut self, trace: &StackTrace) -> std::io::Result<()> {
+    pub fn increment(&mut self, trace: StackTrace) -> std::io::Result<()> {
         let now = self.start_ts.elapsed().as_micros() as u64;
 
         // Load the previous frames for this thread.
@@ -89,17 +89,17 @@ impl Chrometrace {
         // Publish end events for the previous frames that got dropped in the
         // most recent trace.
         for frame in prev_frames.iter().rev().skip(new_idx).rev() {
-            self.events.push(self.event(trace, frame, "E", now));
+            self.events.push(self.event(&trace, frame, "E", now));
         }
 
         // Publish start events for frames that got added in the most recent
         // trace.
         for frame in trace.frames.iter().rev().skip(new_idx) {
-            self.events.push(self.event(trace, frame, "B", now));
+            self.events.push(self.event(&trace, frame, "B", now));
         }
 
         // Save this stack trace for the next iteration.
-        self.prev_traces.insert(trace.thread_id, trace.clone());
+        self.prev_traces.insert(trace.thread_id, trace);
 
         Ok(())
     }

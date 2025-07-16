@@ -87,12 +87,12 @@ fn sample_console(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
 }
 
 pub trait Recorder {
-    fn increment(&mut self, trace: &StackTrace) -> Result<(), Error>;
+    fn increment(&mut self, trace: StackTrace) -> Result<(), Error>;
     fn write(&self, w: &mut dyn Write) -> Result<(), Error>;
 }
 
 impl Recorder for speedscope::Stats {
-    fn increment(&mut self, trace: &StackTrace) -> Result<(), Error> {
+    fn increment(&mut self, trace: StackTrace) -> Result<(), Error> {
         Ok(self.record(trace)?)
     }
     fn write(&self, w: &mut dyn Write) -> Result<(), Error> {
@@ -101,7 +101,7 @@ impl Recorder for speedscope::Stats {
 }
 
 impl Recorder for flamegraph::Flamegraph {
-    fn increment(&mut self, trace: &StackTrace) -> Result<(), Error> {
+    fn increment(&mut self, trace: StackTrace) -> Result<(), Error> {
         Ok(self.increment(trace)?)
     }
     fn write(&self, w: &mut dyn Write) -> Result<(), Error> {
@@ -110,7 +110,7 @@ impl Recorder for flamegraph::Flamegraph {
 }
 
 impl Recorder for chrometrace::Chrometrace {
-    fn increment(&mut self, trace: &StackTrace) -> Result<(), Error> {
+    fn increment(&mut self, trace: StackTrace) -> Result<(), Error> {
         Ok(self.increment(trace)?)
     }
     fn write(&self, w: &mut dyn Write) -> Result<(), Error> {
@@ -121,7 +121,7 @@ impl Recorder for chrometrace::Chrometrace {
 pub struct RawFlamegraph(flamegraph::Flamegraph);
 
 impl Recorder for RawFlamegraph {
-    fn increment(&mut self, trace: &StackTrace) -> Result<(), Error> {
+    fn increment(&mut self, trace: StackTrace) -> Result<(), Error> {
         Ok(self.0.increment(trace)?)
     }
 
@@ -229,7 +229,7 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
     let mut exit_message = "Stopped sampling because process exited";
     let mut last_late_message = std::time::Instant::now();
 
-    for mut sample in sampler {
+    for sample in sampler {
         if let Some(delay) = sample.late {
             if delay > Duration::from_secs(1) {
                 if config.hide_progress {
@@ -261,7 +261,7 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
             }
         }
 
-        for trace in sample.traces.iter_mut() {
+        for mut trace in sample.traces {
             if !(config.include_idle || trace.active) {
                 continue;
             }
