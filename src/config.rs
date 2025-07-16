@@ -68,6 +68,8 @@ pub enum FileFormat {
     raw,
     speedscope,
     chrometrace,
+    #[cfg(feature = "otlp")]
+    otlp,
 }
 
 impl FileFormat {

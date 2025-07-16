@@ -23,6 +23,8 @@ mod python_spy;
 mod python_threading;
 mod sampler;
 mod speedscope;
+#[cfg(feature = "otlp")]
+mod otlp;
 mod stack_trace;
 mod timer;
 mod utils;
@@ -130,6 +132,17 @@ impl Recorder for RawFlamegraph {
     }
 }
 
+#[cfg(feature = "otlp")]
+impl Recorder for otlp::OTLP {
+    fn increment(&mut self, trace: &StackTrace) -> Result<(), Error> {
+        Ok(self.record(trace)?)
+    }
+
+    fn write(&self, _: &mut dyn Write) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
 fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error> {
     let mut output: Box<dyn Recorder> = match config.format {
         Some(FileFormat::flamegraph) => {
@@ -142,6 +155,8 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
         Some(FileFormat::chrometrace) => {
             Box::new(chrometrace::Chrometrace::new(config.show_line_numbers))
         }
+        #[cfg(feature = "otlp")]
+        Some(FileFormat::otlp) => Box::new(otlp::OTLP::new()),
         None => return Err(format_err!("A file format is required to record samples")),
     };
 
@@ -153,6 +168,8 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
                 Some(FileFormat::speedscope) => "json",
                 Some(FileFormat::raw) => "txt",
                 Some(FileFormat::chrometrace) => "json",
+                #[cfg(feature = "otlp")]
+                Some(FileFormat::otlp) => "otlp",
                 None => return Err(format_err!("A file format is required to record samples")),
             };
             let local_time = Local::now().to_rfc3339_opts(SecondsFormat::Secs, true);
@@ -261,7 +278,7 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
             }
         }
 
-        for trace in sample.traces.iter_mut() {
+        for trace in sample.traces {
             if !(config.include_idle || trace.active) {
                 continue;
             }
@@ -364,6 +381,10 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
                 lede, filename, samples, errors
             );
             println!("{}Visit chrome://tracing to view", lede);
+        }
+        #[cfg(feature = "otlp")]
+        FileFormat::otlp => {
+            todo!("TODO")
         }
     };
 
