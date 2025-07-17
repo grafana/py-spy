@@ -1,18 +1,20 @@
 use crate::stack_trace::StackTrace;
 use anyhow::Error;
-use opentelemetry_proto::tonic::profiles::v1::{Function, Line, Location, Mapping};
-use opentelemetry_proto::tonic::profiles::v1::ProfilesDictionary;
+use opentelemetry_proto::tonic::collector::profiles::v1development::profiles_service_client::ProfilesServiceClient;
+use opentelemetry_proto::tonic::collector::profiles::v1development::ExportProfilesServiceRequest;
+use opentelemetry_proto::tonic::profiles::v1development::{ProfilesDictionary, Sample};
+use opentelemetry_proto::tonic::profiles::v1development::{
+    Function, Line, Location, Mapping, Profile, ResourceProfiles, ScopeProfiles,
+};
 use std::collections::HashMap;
-use std::hash::{Hash};
+use std::hash::Hash;
+use std::ops::Drop;
+use std::sync::Arc;
+use tokio::runtime::Runtime;
+use tokio::sync::Mutex;
 
-pub struct OTLP {
-    pd: ProfilesDictionary,
-    strings: HashMap<String, i32>,//todo think of ways avoiding String clone into this HashMap
-    functions: HashMap<FunctionMirror, i32>,
-    locations: HashMap<LocationMirror, i32>,
-}
 const DUMMY_MAPPING_IDX: i32 = 0;
-const DUMMY_MAPPING: Mapping = Mapping{
+const DUMMY_MAPPING: Mapping = Mapping {
     memory_start: 0,
     memory_limit: 0,
     file_offset: 0,
@@ -23,10 +25,38 @@ const DUMMY_MAPPING: Mapping = Mapping{
     has_line_numbers: false,
     has_inline_frames: false,
 };
-impl OTLP {
-    pub fn new() -> Self {
+
+/// OTLPBuilder is responsible for building the profile data
+pub struct OTLPBuilder {
+    pd: ProfilesDictionary,
+    profile: Profile,
+    strings: HashMap<String, i32>,
+    functions: HashMap<FunctionMirror, i32>,
+    locations: HashMap<LocationMirror, i32>,
+}
+impl Default for OTLPBuilder {
+    fn default() -> Self {
         let mut res = Self {
             pd: ProfilesDictionary::default(),
+            profile: Profile{
+                sample_type: vec![],
+                sample: vec![],
+                location_indices: vec![],
+                time_nanos: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos() as i64,
+                duration_nanos: 0,
+                period_type: None,
+                period: 0,
+                comment_strindices: vec![],
+                default_sample_type_index: 0,
+                profile_id: vec![],
+                dropped_attributes_count: 0,
+                original_payload_format: "".to_string(),
+                original_payload: vec![],
+                attribute_indices: vec![],
+            },
             strings: HashMap::default(),
             functions: HashMap::default(),
             locations: HashMap::default(),
@@ -35,42 +65,63 @@ impl OTLP {
         res.pd.mapping_table.push(DUMMY_MAPPING);
         res
     }
+}
+impl OTLPBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     pub fn record(&mut self, trace: &StackTrace) -> Result<(), Error> {
+        let mut s = Sample{
+            locations_start_index: self.profile.location_indices.len() as i32,
+            locations_length: 0,
+            value: vec![1],
+            attribute_indices: vec![],
+            link_index: None,
+            timestamps_unix_nano: vec![],
+        };
+
         for x in &trace.frames {
             let f = FunctionMirror {
-                name_strindex: self.str(x.name.clone()),//todo just move the whole StackTrace here and dont clone
-                filename_strindex: self.str(x.filename.clone()),//todo just move the whole StackTrace here and dont clone
+                name_strindex: self.str(x.name.clone()), //todo just move the whole StackTrace here and dont clone
+                filename_strindex: self.str(x.filename.clone()), //todo just move the whole StackTrace here and dont clone
             };
-            let l = LocationMirror{
+            let l = LocationMirror {
                 function_index: self.fun(f),
                 line: x.line,
             };
-            _ = l;
+            let l = self.loc(l);
+            self.profile.location_indices.push(l);
+            s.locations_length+=1;
         }
+
+
+        self.profile.sample.push(s);
+
         Ok(())
     }
 
+    pub fn take(self) -> (ProfilesDictionary, ScopeProfiles) {
+        (self.pd, ScopeProfiles{
+            scope: None,
+            profiles: vec![self.profile],
+            schema_url: "".to_string(),
+        })
+    }
+
     fn str(&mut self, s: String) -> i32 {
-        // match self.strings.get(&s) {
-        //     None => {
-        //         let idx = self.pd.string_table.len() as i32;
-        //         self.pd.string_table.push(s.clone());//todo avoid clone here
-        //         self.strings.insert(s, idx);
-        //         idx
-        //     }
-        //     Some(idx) => *idx,
-        // }
         Self::insert(&mut self.strings, &mut self.pd.string_table, s)
     }
-    
+
     fn fun(&mut self, fm: FunctionMirror) -> i32 {
         Self::insert(&mut self.functions, &mut self.pd.function_table, fm)
     }
+
     fn loc(&mut self, lm: LocationMirror) -> i32 {
         Self::insert(&mut self.locations, &mut self.pd.location_table, lm)
     }
-    fn insert<M, V>(hm: &mut HashMap<M, i32>, table: & mut Vec<V>, m: M) ->i32
+
+    fn insert<M, V>(hm: &mut HashMap<M, i32>, table: &mut Vec<V>, m: M) -> i32
     where
         M: PartialEq + Eq + Hash + Clone,
         V: From<M>,
@@ -78,14 +129,83 @@ impl OTLP {
         match hm.get(&m) {
             None => {
                 let idx = table.len() as i32;
-                table.push(m.clone().into());//todo think how this clone can be avoided for strign table
+                table.push(m.clone().into()); //todo think how this clone can be avoided for strign table
                 hm.insert(m, idx);
                 idx
             }
             Some(idx) => *idx,
         }
     }
+}
 
+/// OTLPClient is responsible for sending profile data over gRPC
+pub struct OTLPClient {
+    runtime: Runtime,
+    pub client: Arc<Mutex<ProfilesServiceClient<tonic::transport::Channel>>>,
+}
+
+impl OTLPClient {
+    pub fn new(endpoint: String) -> Result<Self, Error> {
+        let runtime = Runtime::new()
+            .map_err(|e| Error::msg(format!("Failed to create tokio runtime: {}", e)))?;
+
+        let c = runtime.block_on(async { ProfilesServiceClient::connect(endpoint).await })?;
+
+        Ok(Self {
+            runtime,
+            client: Arc::new(Mutex::new(c)),
+        })
+    }
+
+    pub fn export(&self, d: ProfilesDictionary, p: ScopeProfiles) {
+        let c = self.client.clone();
+        self.runtime.spawn(async move {
+            let request = ExportProfilesServiceRequest {
+                resource_profiles: vec![ResourceProfiles {
+                    resource: None,
+                    scope_profiles: vec![p],
+                    schema_url: String::new(),
+                }],
+                dictionary: Some(d),
+            };
+            let mut guard = c.lock().await;
+            match guard.export(request).await {
+                Ok(_) => {
+                    log::info!("Exported profiles to OTLP endpoint");
+                }
+                Err(e) => {
+                    log::error!("Failed to export profiles: {}", e);
+                }
+            }
+        });
+    }
+}
+
+pub struct OTLP {
+    builder: OTLPBuilder,
+    client: OTLPClient,
+}
+
+impl OTLP {
+    pub fn new(host: String) -> Result<Self, Error> {
+        Ok(Self {
+            builder: OTLPBuilder::new(),
+            client: OTLPClient::new(host)?,
+        })
+    }
+
+    pub fn record(&mut self, trace: &StackTrace) -> Result<(), Error> {
+        self.builder.record(trace)
+    }
+
+    pub fn export(&mut self) {
+        let (d, p) = std::mem::take(&mut self.builder).take();
+        self.client.export(d, p)
+    }
+}
+
+impl Drop for OTLP {
+    fn drop(&mut self) {}
 }
 
 #[derive(PartialEq, Clone, Eq, Hash)]
@@ -96,7 +216,7 @@ struct FunctionMirror {
 
 impl From<FunctionMirror> for Function {
     fn from(m: FunctionMirror) -> Self {
-        Self{
+        Self {
             name_strindex: m.name_strindex,
             system_name_strindex: 0,
             filename_strindex: m.filename_strindex,
@@ -104,7 +224,6 @@ impl From<FunctionMirror> for Function {
         }
     }
 }
-
 
 #[derive(PartialEq, Clone, Eq, Hash)]
 struct LocationMirror {
@@ -114,19 +233,16 @@ struct LocationMirror {
 
 impl From<LocationMirror> for Location {
     fn from(m: LocationMirror) -> Self {
-        Self{
+        Self {
             mapping_index: Some(DUMMY_MAPPING_IDX),
             address: 0,
-            line: vec![
-                Line{
-                    function_index: m.function_index,
-                    line: m.line as i64,
-                    column: 0,
-                }
-            ],
+            line: vec![Line {
+                function_index: m.function_index,
+                line: m.line as i64,
+                column: 0,
+            }],
             is_folded: false,
             attribute_indices: vec![],
         }
     }
 }
-

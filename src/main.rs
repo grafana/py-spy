@@ -156,7 +156,7 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
             Box::new(chrometrace::Chrometrace::new(config.show_line_numbers))
         }
         #[cfg(feature = "otlp")]
-        Some(FileFormat::otlp) => Box::new(otlp::OTLP::new()),
+        Some(FileFormat::otlp) => Box::new(otlp::OTLP::new("127.0.0.1:4040".to_string())?),
         None => return Err(format_err!("A file format is required to record samples")),
     };
 
