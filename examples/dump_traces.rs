@@ -22,7 +22,6 @@ fn print_python_stacks(pid: remoteprocess::Pid) -> Result<(), anyhow::Error> {
 }
 
 fn main() {
-    env_logger::init();
     let args: Vec<String> = std::env::args().collect();
     let pid = if args.len() > 1 {
         args[1].parse().expect("invalid pid")

@@ -130,7 +130,7 @@ pub fn ignore_frame(name: &str) -> bool {
         "__pyx_FusedFunction_call",
     ];
 
-    ignorable.iter().any(|&f| f == name)
+    ignorable.contains(&name)
 }
 
 pub fn demangle(name: &str) -> &str {

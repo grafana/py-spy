@@ -79,8 +79,8 @@ impl NativeStack {
             let cached_symbol = self.symbol_cache.get(&addr).cloned();
 
             // merges a remoteprocess::StackFrame into the current merged vec
-            let is_python_addr = self.python.as_ref().map_or(false, |m| m.contains(addr))
-                || self.libpython.as_ref().map_or(false, |m| m.contains(addr));
+            let is_python_addr = self.python.as_ref().is_some_and(|m| m.contains(addr))
+                || self.libpython.as_ref().is_some_and(|m| m.contains(addr));
             let merge_frame = &mut |frame: &remoteprocess::StackFrame| {
                 match self.get_merge_strategy(is_python_addr, frame) {
                     MergeType::Ignore => {}

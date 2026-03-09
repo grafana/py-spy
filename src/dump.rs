@@ -20,11 +20,7 @@ pub fn print_traces(pid: Pid, config: &Config, parent: Option<Pid>) -> Result<()
         process.process.cmdline()?.join(" ")
     );
 
-    println!(
-        "Python v{} ({})",
-        &process.version,
-        process.process.exe()?
-    );
+    println!("Python v{} ({})", &process.version, process.process.exe()?);
 
     if let Some(parentpid) = parent {
         let parentprocess = remoteprocess::Process::new(parentpid)?;
@@ -70,12 +66,7 @@ pub fn print_trace(trace: &StackTrace, include_activity: bool) {
 
     match trace.thread_name.as_ref() {
         Some(name) => {
-            println!(
-                "Thread {}{}: \"{}\"",
-                thread_id,
-                status,
-                name
-            );
+            println!("Thread {}{}: \"{}\"", thread_id, status, name);
         }
         None => {
             println!("Thread {}{}", thread_id, status);
@@ -88,18 +79,9 @@ pub fn print_trace(trace: &StackTrace, include_activity: bool) {
             None => &frame.filename,
         };
         if frame.line != 0 {
-            println!(
-                "    {} ({}:{})",
-                &frame.name,
-                &filename,
-                frame.line
-            );
+            println!("    {} ({}:{})", &frame.name, &filename, frame.line);
         } else {
-            println!(
-                "    {} ({})",
-                &frame.name,
-                &filename
-            );
+            println!("    {} ({})", &frame.name, &filename);
         }
 
         if let Some(locals) = &frame.locals {
