@@ -1,3 +1,4 @@
+#[cfg(feature = "cli")]
 use clap::{
     crate_description, crate_name, crate_version, value_parser, Arg, ArgEnum, Command,
     PossibleValue,
@@ -62,7 +63,8 @@ pub struct Config {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(ArgEnum, Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "cli", derive(ArgEnum))]
 pub enum FileFormat {
     flamegraph,
     raw,
@@ -70,6 +72,7 @@ pub enum FileFormat {
     chrometrace,
 }
 
+#[cfg(feature = "cli")]
 impl FileFormat {
     pub fn possible_values() -> impl Iterator<Item = PossibleValue<'static>> {
         FileFormat::value_variants()
@@ -78,6 +81,7 @@ impl FileFormat {
     }
 }
 
+#[cfg(feature = "cli")]
 impl std::str::FromStr for FileFormat {
     type Err = String;
 
@@ -88,6 +92,21 @@ impl std::str::FromStr for FileFormat {
             }
         }
         Err(format!("Invalid fileformat: {s}"))
+    }
+}
+
+#[cfg(not(feature = "cli"))]
+impl std::str::FromStr for FileFormat {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "flamegraph" => Ok(FileFormat::flamegraph),
+            "raw" => Ok(FileFormat::raw),
+            "speedscope" => Ok(FileFormat::speedscope),
+            "chrometrace" => Ok(FileFormat::chrometrace),
+            _ => Err(format!("Invalid fileformat: {s}")),
+        }
     }
 }
 
@@ -143,6 +162,7 @@ impl Default for Config {
     }
 }
 
+#[cfg(feature = "cli")]
 impl Config {
     /// Uses clap to set config options from commandline arguments
     pub fn from_commandline() -> Config {
@@ -491,6 +511,7 @@ impl Config {
     }
 }
 
+#[cfg(feature = "cli")]
 #[cfg(test)]
 mod tests {
     use super::*;
