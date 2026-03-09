@@ -1,5 +1,4 @@
 use anyhow::Error;
-use console::{style, Term};
 
 use crate::config::Config;
 use crate::python_spy::PythonSpy;
@@ -17,21 +16,21 @@ pub fn print_traces(pid: Pid, config: &Config, parent: Option<Pid>) -> Result<()
 
     println!(
         "Process {}: {}",
-        style(process.pid).bold().yellow(),
+        process.pid,
         process.process.cmdline()?.join(" ")
     );
 
     println!(
         "Python v{} ({})",
-        style(&process.version).bold(),
-        style(process.process.exe()?).dim()
+        &process.version,
+        process.process.exe()?
     );
 
     if let Some(parentpid) = parent {
         let parentprocess = remoteprocess::Process::new(parentpid)?;
         println!(
             "Parent Process {}: {}",
-            style(parentpid).bold().yellow(),
+            parentpid,
             parentprocess.cmdline()?.join(" ")
         );
     }
@@ -45,10 +44,7 @@ pub fn print_traces(pid: Pid, config: &Config, parent: Option<Pid>) -> Result<()
                 .child_processes()
                 .expect("failed to get subprocesses")
             {
-                let term = Term::stdout();
-                let (_, width) = term.size();
-
-                println!("\n{}", &style("-".repeat(width as usize)).dim());
+                println!("\n{}", "-".repeat(80));
                 // child_processes() returns the whole process tree, since we're recursing here
                 // though we could end up printing grandchild processes multiple times. Limit down
                 // to just once
@@ -76,13 +72,13 @@ pub fn print_trace(trace: &StackTrace, include_activity: bool) {
         Some(name) => {
             println!(
                 "Thread {}{}: \"{}\"",
-                style(thread_id).bold().yellow(),
+                thread_id,
                 status,
                 name
             );
         }
         None => {
-            println!("Thread {}{}", style(thread_id).bold().yellow(), status);
+            println!("Thread {}{}", thread_id, status);
         }
     };
 
@@ -94,15 +90,15 @@ pub fn print_trace(trace: &StackTrace, include_activity: bool) {
         if frame.line != 0 {
             println!(
                 "    {} ({}:{})",
-                style(&frame.name).green(),
-                style(&filename).cyan(),
-                style(frame.line).dim()
+                &frame.name,
+                &filename,
+                frame.line
             );
         } else {
             println!(
                 "    {} ({})",
-                style(&frame.name).green(),
-                style(&filename).cyan()
+                &frame.name,
+                &filename
             );
         }
 
@@ -111,10 +107,10 @@ pub fn print_trace(trace: &StackTrace, include_activity: bool) {
             let mut shown_locals = false;
             for local in locals {
                 if local.arg && !shown_args {
-                    println!("        {}", style("Arguments:").dim());
+                    println!("        Arguments:");
                     shown_args = true;
                 } else if !local.arg && !shown_locals {
-                    println!("        {}", style("Locals:").dim());
+                    println!("        Locals:");
                     shown_locals = true;
                 }
 

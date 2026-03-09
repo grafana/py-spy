@@ -7,7 +7,6 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use anyhow::{Context, Error, Result};
-use console::style;
 use log::info;
 use remoteprocess::ProcessMemory;
 
@@ -371,7 +370,7 @@ impl PythonCoreDump {
         if let Some(status) = self.core.status.first() {
             println!(
                 "Signal {}: {}",
-                style(status.pr_cursig).bold().yellow(),
+                status.pr_cursig,
                 self.core.filename.display()
             );
         }
@@ -379,11 +378,11 @@ impl PythonCoreDump {
         if let Some(psinfo) = self.core.psinfo {
             println!(
                 "Process {}: {}",
-                style(psinfo.pr_pid).bold().yellow(),
+                psinfo.pr_pid,
                 OsStr::from_bytes(&psinfo.pr_psargs).to_string_lossy()
             );
         }
-        println!("Python v{}", style(&self.version).bold());
+        println!("Python v{}", &self.version);
         println!();
         for trace in traces.iter().rev() {
             print_trace(trace, false);
