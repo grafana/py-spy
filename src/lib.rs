@@ -33,7 +33,6 @@ pub mod binary_parser;
 pub mod config;
 #[cfg(feature = "unwind")]
 mod cython;
-pub mod dump;
 #[cfg(feature = "unwind")]
 mod native_stack_trace;
 mod python_bindings;
