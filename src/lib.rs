@@ -31,8 +31,6 @@ extern crate log;
 
 pub mod binary_parser;
 pub mod config;
-#[cfg(target_os = "linux")]
-pub mod coredump;
 #[cfg(feature = "unwind")]
 mod cython;
 pub mod dump;
